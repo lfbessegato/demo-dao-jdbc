@@ -1,13 +1,26 @@
 package model.dao.impl;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 
+import db.DB;
+import db.DbException;
 import model.dao.SellerDao;
+import model.entities.Department;
 import model.entities.Seller;
 
 // Reponsável por implementar o DAO de Seller
 public class SellerDaoJDBC implements SellerDao {
 
+	private Connection conn;
+	
+	public SellerDaoJDBC(Connection conn) {
+		this.conn = conn;
+	}
+	
 	@Override
 	public void insert(Seller obj) {
 		// TODO Auto-generated method stub
@@ -28,8 +41,50 @@ public class SellerDaoJDBC implements SellerDao {
 
 	@Override
 	public Seller findById(Integer Id) {
-		// TODO Auto-generated method stub
-		return null;
+		PreparedStatement st = null;
+		ResultSet rs = null;
+		
+		try {
+			st = conn.prepareStatement(
+					"SELECT seller.*,department.Name as DepName "
+					+ "FROM seller INNER JOIN department "
+					+ "ON seller.DepartmentId = department.Id "
+					+ "WHERE seller.Id = ?");
+			
+			st.setInt(1, Id);
+			rs = st.executeQuery();
+			
+			/* 
+			 * Instanciar os objetos associados em Memória
+			 * */
+			
+			// Testar se veio algum resultado
+			if (rs.next()) {
+				Department dep = new Department();
+				//Setados os campos de Departamento
+				dep.setId(rs.getInt("DepartmentId"));
+				dep.setName(rs.getString("DepName"));
+				
+				Seller obj = new Seller();
+				obj.setId(rs.getInt("Id"));
+				obj.setName(rs.getString("Name"));
+				obj.setEmail(rs.getString("Email"));
+				obj.setBaseSalary(rs.getDouble("BaseSalary"));
+				obj.setBirthDate(rs.getDate("BirthDate"));
+				
+				//Associando com o objeto Department
+				obj.setDepartment(dep);
+				return obj;
+			}
+			return null; //Que o vendedor é nulo, não existe nenhum vendedor com o Id selecionado
+		}
+		catch (SQLException e) {
+			throw new DbException(e.getMessage());
+		}
+		finally {
+			DB.closeStatement(st);
+			DB.closeResultSet(rs);
+		}
 	}
 
 	@Override
